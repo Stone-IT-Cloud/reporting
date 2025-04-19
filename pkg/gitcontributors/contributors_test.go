@@ -1,20 +1,17 @@
-package gitcontributors_test // <-- El paquete de prueba para 'gitcontributors'
+package gitcontributors_test // <-- The test package for 'gitcontributors'
 
 import (
-	// "errors" // Descomentar si se usa para chequeos de error específicos
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"sort" // Asegurarse de que 'sort' está importado para el helper de ordenamiento
+	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Stone-IT-Cloud/reporting/pkg/gitcontributors"
-	// --- ★★★ IMPORTANTE: Actualizar la ruta de importación ★★★ ---
-	// <-- Ruta al paquete DENTRO del módulo 'reporting'
 )
 
 // --- Test Suite Setup (Helpers: setupGitRepo, runGitCommand, gitCommit, testTime, PtrTime, sortContributorsForTest) ---
@@ -88,7 +85,7 @@ func sortContributorsForTest(contributors []gitcontributors.Contributor) {
 }
 
 // --- Test Cases ---
-const ( // Asegurarse que las constantes estén definidas si no se copiaron antes
+const ( // Ensure constants are defined if not copied earlier
 	author1Name  = "Alice Alpha"
 	author1Email = "alice@example.com"
 	author2Name  = "Bob Bravo"
@@ -105,12 +102,11 @@ func TestGetContributors(t *testing.T) {
 		name                 string
 		setupRepo            func(t *testing.T, repoPath string)
 		repoPathOverride     string
-		opts                 *gitcontributors.Options // <-- ★ Asegurarse que usa el tipo importado correctamente
+		opts                 *gitcontributors.Options // <-- ★ Ensure it uses the imported type correctly
 		expectedError        bool
 		expectedErrorSubstr  string
-		expectedContributors []gitcontributors.Contributor // <-- ★ Tipo importado
+		expectedContributors []gitcontributors.Contributor // <-- ★ Imported type
 	}{
-		// ... (Copiar TODOS los test cases de la respuesta anterior, incluyendo los de errores y los de filtros de fecha) ...
 		// --- Error Cases ---
 		{name: "Error: Empty path", repoPathOverride: "", expectedError: true},
 		{name: "Error: Non-existent path", repoPathOverride: filepath.Join(os.TempDir(), "nonexistent-path-for-test-"+fmt.Sprintf("%d", time.Now().UnixNano())), expectedError: true},
@@ -133,7 +129,7 @@ func TestGetContributors(t *testing.T) {
 					Name:    "Test User",
 					Email:   "test@example.com",
 					Commits: 1,
-					// No especificamos fechas exactas, las verificaremos luego
+					// We do not specify exact dates, they will be verified later
 				},
 			},
 			expectedError: false,
@@ -148,7 +144,6 @@ func TestGetContributors(t *testing.T) {
 			gitCommit(t, repoPath, "C C1", author3Name, author3Email, testTime(2023, 1, 3, 11))
 			gitCommit(t, repoPath, "D C1", author4Name, author4Email, testTime(2023, 1, 4, 14))
 		}, expectedContributors: []gitcontributors.Contributor{{Name: "Test User", Email: "test@example.com", Commits: 1}, {Name: author1Name, Email: author1Email, Commits: 2, FirstCommitDate: testTime(2023, 1, 1, 10), LastCommitDate: testTime(2023, 1, 5, 12)}, {Name: author3Name, Email: author3Email, Commits: 1, FirstCommitDate: testTime(2023, 1, 3, 11), LastCommitDate: testTime(2023, 1, 3, 11)}, {Name: author2Name, Email: author2Email, Commits: 1, FirstCommitDate: testTime(2023, 1, 2, 9), LastCommitDate: testTime(2023, 1, 2, 9)}, {Name: author4Name, Email: author4Email, Commits: 1, FirstCommitDate: testTime(2023, 1, 4, 14), LastCommitDate: testTime(2023, 1, 4, 14)}}, expectedError: false},
-		// ... (Añadir más casos de prueba de la respuesta anterior, especialmente los de merge y filtros de fecha) ...
 		// --- Date Filter Cases ---
 		{name: "Success: Date Filter - Start and End Date", setupRepo: func(t *testing.T, repoPath string) {
 			gitCommit(t, repoPath, "Way Before", author1Name, author1Email, testTime(2023, 5, 1, 10))
@@ -170,7 +165,6 @@ func TestGetContributors(t *testing.T) {
 				t.Fatal("Test case needs either setupRepo or repoPathOverride")
 			}
 
-			// --- ★★★ Usa el paquete importado ★★★ ---
 			actualContributors, err := gitcontributors.GetContributors(repoPath, tc.opts)
 
 			// Check for errors
@@ -180,22 +174,22 @@ func TestGetContributors(t *testing.T) {
 				} else if tc.expectedErrorSubstr != "" && !strings.Contains(err.Error(), tc.expectedErrorSubstr) {
 					t.Errorf("Expected error containing %q, got: %v", tc.expectedErrorSubstr, err)
 				}
-				return // No más validaciones si esperábamos un error
+				return // No further validations if we expected an error
 			}
 
 			if err != nil {
 				t.Errorf("Expected no error, but got: %v", err)
-				return // No más validaciones si no esperábamos un error pero lo recibimos
+				return // No further validations if we did not expect an error but got one
 			}
 
-			// Para casos de prueba con un repositorio vacío o inicial, solo verificamos nombre, email y commits
-			// ignorando las fechas porque siempre serán las fechas reales
+			// For test cases with an empty or initial repository, we only verify name, email, and commits
+			// ignoring dates because they will always be the actual dates
 			if strings.Contains(tc.name, "Empty repository") {
 				if len(actualContributors) != len(tc.expectedContributors) {
 					t.Fatalf("Expected %d contributors, got %d", len(tc.expectedContributors), len(actualContributors))
 				}
 
-				// Ordenar los contribuidores para que la comparación sea consistente
+				// Sort contributors to ensure consistent comparison
 				sortContributorsForTest(actualContributors)
 				sortContributorsForTest(tc.expectedContributors)
 
@@ -210,7 +204,7 @@ func TestGetContributors(t *testing.T) {
 						t.Errorf("Mismatch at index %d:\nExpected: {Name:%s Email:%s Commits:%d}\nActual:   {Name:%s Email:%s Commits:%d}",
 							i, expected.Name, expected.Email, expected.Commits, actual.Name, actual.Email, actual.Commits)
 					}
-					// Ignoramos FirstCommitDate y LastCommitDate
+					// Ignore FirstCommitDate and LastCommitDate
 				}
 				return
 			}
@@ -221,20 +215,20 @@ func TestGetContributors(t *testing.T) {
 				actualContributors[i].LastCommitDate = actualContributors[i].LastCommitDate.UTC()
 			}
 
-			// Para el resto de casos, necesitamos verificar los datos según el tipo de test
+			// For the rest of the cases, we need to verify the data according to the type of test
 
-			// Ordenar los contribuidores para una comparación consistente
+			// Sort contributors for consistent comparison
 			sortContributorsForTest(actualContributors)
 			sortContributorsForTest(tc.expectedContributors)
 
-			// Verificar si los datos esperados y actuales coinciden en longitud
+			// Verify if the expected and actual data match in length
 			if len(actualContributors) != len(tc.expectedContributors) {
 				t.Errorf("Contributors count mismatch: Expected %d, got %d",
 					len(tc.expectedContributors), len(actualContributors))
 				return
 			}
 
-			// Para tests de filtros de fecha, verificamos todos los campos incluidas las fechas
+			// For date filter tests, we verify all fields including dates
 			if strings.Contains(tc.name, "Date Filter") {
 				if !reflect.DeepEqual(actualContributors, tc.expectedContributors) {
 					t.Errorf("Contributor mismatch for date filter test:\nExpected: %+v\nActual:   %+v", tc.expectedContributors, actualContributors)
@@ -247,7 +241,7 @@ func TestGetContributors(t *testing.T) {
 				return
 			}
 
-			// Para el resto de casos, verificamos nombre, email y commits, pero ignoramos las fechas del usuario "Test User"
+			// For the rest of the cases, we verify name, email, and commits, but ignore dates for the "Test User"
 			for i, expected := range tc.expectedContributors {
 				if i >= len(actualContributors) {
 					t.Errorf("Missing expected contributor at index %d: %+v", i, expected)
@@ -260,7 +254,7 @@ func TestGetContributors(t *testing.T) {
 						i, expected.Name, expected.Email, expected.Commits, actual.Name, actual.Email, actual.Commits)
 				}
 
-				// Solo verificamos las fechas para contribuidores que no sean "Test User"
+				// Only verify dates for contributors other than "Test User"
 				if actual.Name != "Test User" && (!actual.FirstCommitDate.Equal(expected.FirstCommitDate) ||
 					!actual.LastCommitDate.Equal(expected.LastCommitDate)) {
 					t.Errorf("Date mismatch at index %d:\nExpected: {FirstCommitDate:%v LastCommitDate:%v}\nActual:   {FirstCommitDate:%v LastCommitDate:%v}",

@@ -1,4 +1,4 @@
-package gitcontributors // <-- El nombre del paquete ahora es 'gitcontributors'
+package gitcontributors // <-- The package name is now 'gitcontributors'
 
 import (
 	"bufio"
@@ -28,7 +28,7 @@ type Options struct {
 	EndDate             *time.Time // Optional: Only count commits on or before this date/time (inclusive).
 }
 
-// internal struct to hold aggregated data during processing
+// Internal struct to hold aggregated data during processing.
 type aggregatedContributorData struct {
 	Name            string
 	Email           string
@@ -37,9 +37,42 @@ type aggregatedContributorData struct {
 	LastCommitDate  time.Time
 }
 
-// GetContributors analyzes the Git repository at the specified path and returns a list of contributors
-// with their commit counts and date ranges, optionally filtered by date.
-// It requires the 'git' command-line tool to be installed and accessible in the system's PATH.
+// GetContributors retrieves a list of contributors for a given Git repository path.
+// It parses the Git log to aggregate contributor data such as name, email, number of commits,
+// and the first and last commit dates.
+//
+// Parameters:
+//   - repoPath: The file system path to the Git repository.
+//   - opts: Optional parameters to filter and customize the retrieval of contributors.
+//     If nil, default options will be used.
+//
+// Returns:
+//   - A slice of Contributor structs containing aggregated contributor data.
+//   - An error if the operation fails.
+//
+// Behavior:
+//   - Filters commits based on the provided options (e.g., date range, inclusion of merge commits).
+//   - Aggregates contributor data by name and email, ignoring case.
+//   - Skips malformed or unparseable Git log entries.
+//   - Returns an empty slice if the repository has no commits.
+//
+// Errors:
+//   - Returns an error if the repository path is invalid or inaccessible.
+//   - Returns an error if the Git log command fails for reasons other than an empty repository.
+//
+// Example:
+//
+//	contributors, err := GetContributors("/path/to/repo", &Options{
+//		StartDate:          timePtr(time.Date(2022, 1, 1, 0, 0, 0, 0, time.UTC)),
+//		EndDate:            timePtr(time.Date(2022, 12, 31, 23, 59, 59, 0, time.UTC)),
+//		IncludeMergeCommits: false,
+//	})
+//	if err != nil {
+//		log.Fatalf("Failed to get contributors: %v", err)
+//	}
+//	for _, contributor := range contributors {
+//		fmt.Printf("Name: %s, Email: %s, Commits: %d\n", contributor.Name, contributor.Email, contributor.Commits)
+//	}
 func GetContributors(repoPath string, opts *Options) ([]Contributor, error) {
 	// --- Input Validation & Path Setup ---
 	absRepoPath, err := validateRepoPath(repoPath)
@@ -167,7 +200,19 @@ func GetContributors(repoPath string, opts *Options) ([]Contributor, error) {
 	return contributors, nil
 }
 
-// validateRepoPath checks if the path is valid and returns the absolute path.
+// validateRepoPath validates the provided repository path to ensure it is a valid
+// Git repository. It performs the following checks:
+//   - The repository path is not empty.
+//   - The repository path can be resolved to an absolute path.
+//   - The resolved path exists and is a directory.
+//   - The directory contains a ".git" subdirectory, indicating it is a Git repository.
+//
+// Parameters:
+//   - repoPath: The path to the repository to validate.
+//
+// Returns:
+//   - A string representing the absolute path of the repository if validation succeeds.
+//   - An error if the validation fails, describing the reason for failure.
 func validateRepoPath(repoPath string) (string, error) {
 	// ... (implementation identical to previous version) ...
 	if repoPath == "" {
@@ -197,8 +242,15 @@ func validateRepoPath(repoPath string) (string, error) {
 	return absRepoPath, nil
 }
 
-// sortContributors sorts the slice alphabetically by Name (case-insensitive),
-// then by Email (case-insensitive) for tie-breaking.
+// sortContributors sorts a slice of Contributor structs in a stable manner.
+// The sorting is performed first by the Name field (case-insensitive) and,
+// in case of ties, by the Email field (also case-insensitive).
+//
+// Parameters:
+//   - contributors: A slice of Contributor structs to be sorted.
+//
+// The function modifies the input slice in place, arranging the contributors
+// in ascending order based on their names and emails.
 func sortContributors(contributors []Contributor) {
 	// ... (implementation identical to previous version) ...
 	sort.SliceStable(contributors, func(i, j int) bool {

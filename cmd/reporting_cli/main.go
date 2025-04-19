@@ -1,4 +1,4 @@
-package main // <-- Es un ejecutable
+package main
 
 import (
 	"flag"
@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	// --- ★★★ IMPORTANTE: Actualizar la ruta de importación ★★★ ---
 	gc "github.com/Stone-IT-Cloud/reporting/pkg/gitcontributors"
 )
 
@@ -53,7 +52,7 @@ func main() {
 	}
 
 	// --- Prepare Options for GetContributors ---
-	// --- ★★★ Usa los tipos del paquete importado (gc) ★★★ ---
+	// --- ★★★ Use the types from the imported package (gc) ★★★ ---
 	opts := &gc.Options{
 		IncludeMergeCommits: *includeMerges,
 		StartDate:           startDate,
@@ -77,18 +76,18 @@ func main() {
 
 	fmt.Printf("Contributors for %s (%s):\n", repoPath, strings.Join(filterDesc, ", "))
 
-	// --- ★★★ Llama a la función del paquete importado (gc) ★★★ ---
+	// --- ★★★ Call the function from the imported package (gc) ★★★ ---
 	contributors, err := gc.GetContributors(repoPath, opts)
 	if err != nil {
 		log.Fatalf("Error getting contributors: %v", err)
 	}
 
 	// --- Print Results ---
-	printContributors(contributors) // Llama a la función helper local
+	printContributors(contributors) // Call the local helper function
 }
 
-// printContributors helper function (puede permanecer aquí o moverse a internal si crece)
-// --- ★★★ Usa el tipo del paquete importado (gc) ★★★ ---
+// printContributors helper function (can remain here or move to internal if it grows)
+// --- ★★★ Use the type from the imported package (gc) ★★★ ---
 func printContributors(contributors []gc.Contributor) {
 	if len(contributors) == 0 {
 		fmt.Println("  No contributors found (or repository is empty/filtered out).")
