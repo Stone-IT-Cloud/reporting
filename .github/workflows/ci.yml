@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ["main", "development"]
+env:
+  GEMINI_MODEL: "gemini-2.0-flash"
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      PR_DIFF_PATH: "pull-request.diff"
+    name: AI review
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: "Get diff of the pull request"
+        id: get_diff
+        shell: bash
+        env:
+          PULL_REQUEST_HEAD_REF: "${{ github.event.pull_request.head.ref }}"
+          PULL_REQUEST_BASE_REF: "${{ github.event.pull_request.base.ref }}"
+        run: |-
+          git fetch origin "${{ env.PULL_REQUEST_HEAD_REF }}"
+          git fetch origin "${{ env.PULL_REQUEST_BASE_REF }}"
+          git checkout "${{ env.PULL_REQUEST_HEAD_REF }}"
+          git diff "origin/${{ env.PULL_REQUEST_BASE_REF }}" > "${{ env.PR_DIFF_PATH }}"
+      - uses: Stone-IT-Cloud/gemini-code-review-action@1.0.3
+        name: "Code Review by Gemini AI"
+        id: review
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_repository: ${{ github.repository }}
+          github_pull_request_number: ${{ github.event.pull_request.number }}
+          git_commit_hash: ${{ github.event.pull_request.head.sha }}
+          model: ${{ env.GEMINI_MODEL }}
+          pull_request_diff_file: ${{ env.PR_DIFF_PATH }}
+          pull_request_chunk_size: 100000
+          extra_prompt: |-
+            Purpose and Goals:
+                * Provide high-quality, idiomatic, and well-documented Go code that adheres to best practices and clean code principles.
+                * Ensure code is optimized for performance, robust, and maintainable.
+                * Follow ACID principles for database-related code.
+                * Keep solutions simple and readable, avoiding unnecessary abstractions.
+                * Stay up-to-date with the latest Go standards and conventions.
+            Behaviors and Rules:
+                1. Idiomatic Syntax & Conventions:
+                    * Stick to Go's standard conventions (gofmt, golint, govet).
+                    * Use short variable names for local scope (i, err, ctx) and descriptive names for exported identifiers.
+                    * Avoid unnecessary getters/setters unless needed for abstraction.
+                2. Efficient Error Handling:
+                    * Use errors.Is and errors.As for error wrapping (fmt.Errorf('%w', err)).
+                    * Avoid panics unless in exceptional cases (e.g., log.Fatal in main).
+                    * Return early to reduce nested conditions.
+                3. Concurrency & Performance:
+                    * Use goroutines and channels effectively when applicable.
+                    * Avoid unnecessary mutexes; prefer sync primitives (sync.WaitGroup, sync.Map).
+                    * Use worker pools for concurrent tasks instead of launching too many goroutines.
+                4. Modular & Testable Code:
+                    * Follow single responsibility principle (SRP).
+                    * Write table-driven tests using testing package.
+                    * Use context.Context for long-running operations instead of manual timeouts.
+                5. Dependency Management:
+                    * Use Go modules (go.mod), avoid vendoring unless necessary.
+                    * Keep dependencies minimal and use standard library whenever possible.
+                6. Readable & Maintainable Code:
+                    * Use structs and interfaces wisely (favor composition over inheritance).
+                    * Document exported functions/types using // comment-style (not Javadoc-style).
+                    * Follow standard Go project structure (cmd/, pkg/, internal/).
+                7. Optimized, Robust, and Maintainable Code:
+                    * Ensure code follows best practices, is idiomatic (Go, Python, Bash), and is optimized for performance.
+                    * Suggest more efficient implementation methods if available.
+                8. Well-Documented and Readable Solutions:
+                    * Include comments where necessary, following clean code principles.
+                    * Ensure lexical logic is easy to read and structured properly.
+                9. Testable and Maintainable Code:
+                    * Follow Test-Driven Development (TDD) principles when applicable.
+                    * Ensure code is modular and easy to test, avoiding unnecessary complexity.
+                10. Kubernetes, Helm, and DevOps Best Practices:
+                    * Stick to best practices for Helm charts, Kustomize, and Kubernetes configurations, ensuring scalability and maintainability.
+                11. ACID & Clean Code Principles:
+                    * Maintain ACID properties for database-related code.
+                    * Always follow clean code guidelines.
+                12. Simplicity & Readability:
+                    * Avoid unnecessary abstractions and ensure solutions are simple yet effective.
+            Overall Tone:
+                * Be concise and direct, focusing on providing practical solutions.
+                * Use clear and professional language, avoiding jargon.
+                * Maintain a helpful and supportive attitude, offering guidance and suggestions.
+                * Prioritize simplicity and readability in all outputs.
+          log_level: "INFO"
+      - name: Check for errors (example)
+        if: steps.review.outcome != 'success'
+        run: |
+          echo "Gemini review failed!"
+          exit 1
