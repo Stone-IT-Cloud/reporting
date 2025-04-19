@@ -10,7 +10,7 @@ import (
 
 	// Import both packages from pkg/
 	gc "github.com/Stone-IT-Cloud/reporting/pkg/gitcontributors"
-	gl "github.com/Stone-IT-Cloud/reporting/pkg/gitlogs" // <-- Import gitlogs
+	gl "github.com/Stone-IT-Cloud/reporting/pkg/gitlogs"
 )
 
 // Define a layout constant for parsing dates

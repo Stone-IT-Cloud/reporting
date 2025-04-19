@@ -7,11 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
-	// Importamos un helper para validación si lo hemos puesto en un sitio común,
-	// o redefinimos la validación aquí. Por simplicidad, redefinimos.
-	// Si la app crece, sería mejor tener un pkg/validation o internal/validation.
 )
 
 // Options defines the filtering options for retrieving git logs.
@@ -177,7 +175,7 @@ func GetLogsJSON(repoPath string, opts *Options) (string, error) {
 		if entry, ok := logEntriesMap[hash]; ok {
 			entry.ModifiedFiles = modifiedFiles // Assign the parsed files
 			// Optional: Sort files here if needed
-			// sort.Strings(entry.ModifiedFiles)
+			sort.Strings(entry.ModifiedFiles)
 			finalLogEntries = append(finalLogEntries, *entry) // Append the completed entry
 		} else {
 			// This case should ideally not happen if the hash came from commitOrder
