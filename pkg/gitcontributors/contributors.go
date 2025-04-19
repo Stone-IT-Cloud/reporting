@@ -98,8 +98,9 @@ func GetContributors(repoPath string, opts *Options) ([]Contributor, error) {
 
 		parts := strings.SplitN(line, separator, 3)
 		if len(parts) != 3 {
+			fmt.Fprintf(os.Stderr, "Warning: malformed git log output line: %q\n", line)
 			continue
-		} // Skip malformed lines silently in lib code? Or log?
+		}
 
 		name := strings.TrimSpace(parts[0])
 		email := strings.TrimSpace(parts[1])
