@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context" // Import context
 	"flag"
 	"fmt"
 	"log"
@@ -8,30 +9,32 @@ import (
 	"strings"
 	"time"
 
-	// Import both packages from pkg/
 	gc "github.com/Stone-IT-Cloud/reporting/pkg/gitcontributors"
 	gl "github.com/Stone-IT-Cloud/reporting/pkg/gitlogs"
+
+	// --- ★★★ Import activityreport from internal ★★★ ---
+	ar "github.com/Stone-IT-Cloud/reporting/internal/activityreport"
 )
 
-// Define a layout constant for parsing dates
-const dateLayout = "2006-01-02" // YYYY-MM-DD
+const dateLayout = "2006-01-02"
 
 func main() {
 	// --- Flags ---
-	// Contributor flags
+	// Existing flags
 	includeMerges := flag.Bool("m", false, "Contributor report: Include merge commits")
-
-	// Log flags
-	getLogs := flag.Bool("log", false, "Generate git log report instead of contributors") // <-- New flag
-
-	// Common flags
+	getLogsFlag := flag.Bool("log", false, "Generate git log JSON report") // Renamed for clarity
 	startDateStr := flag.String("start", "", fmt.Sprintf("Start date filter (inclusive), format %s", dateLayout))
 	endDateStr := flag.String("end", "", fmt.Sprintf("End date filter (inclusive), format %s", dateLayout))
+
+	// --- ★★★ New flag for Activity Report ★★★ ---
+	generateReportFlag := flag.Bool("generate-report", false, "Generate AI activity report from git logs")
+	configPath := flag.String("config", "configs/activity_report_config.yaml", "Path to activity report config file")
 
 	flag.Parse()
 
 	// --- Validate Arguments ---
 	if flag.NArg() != 1 {
+		// ... (Usage info identical to before, potentially mention new flags) ...
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] <path-to-git-repo>\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
@@ -39,8 +42,23 @@ func main() {
 	}
 	repoPath := flag.Arg(0)
 
+	// Determine mutually exclusive actions
+	actionCount := 0
+	if *getLogsFlag {
+		actionCount++
+	}
+	if *generateReportFlag {
+		actionCount++
+	}
+	// If neither log nor generate-report is specified, default to contributors
+	isContributorReport := actionCount == 0
+	if actionCount > 1 {
+		log.Fatal("Error: -log and -generate-report flags are mutually exclusive.")
+	}
+
 	// --- Parse Dates ---
 	var startDate, endDate *time.Time
+	// ... (Date parsing identical to before) ...
 	if *startDateStr != "" {
 		parsedDate, err := time.ParseInLocation(dateLayout, *startDateStr, time.Local)
 		if err != nil {
@@ -58,36 +76,46 @@ func main() {
 	}
 
 	// --- Execute requested action ---
-	if *getLogs {
-		// --- Generate Log Report ---
-		logOpts := &gl.Options{ // <-- Use gitlogs options
-			StartDate: startDate,
-			EndDate:   endDate,
-		}
+	ctx := context.Background() // Create a background context
 
+	switch {
+	case *getLogsFlag:
+		// --- Generate Log Report (JSON) ---
+		logOpts := &gl.Options{StartDate: startDate, EndDate: endDate}
 		fmt.Printf("Generating Git Log JSON for %s", repoPath)
 		if logOpts.StartDate != nil {
 			fmt.Printf(" from %s", logOpts.StartDate.Format(dateLayout))
 		}
 		if logOpts.EndDate != nil {
 			fmt.Printf(" until %s", *endDateStr)
-		} // Show user input date
+		}
 		fmt.Println(" (excluding merges, all branches, chronological):")
-
-		logJSON, err := gl.GetLogsJSON(repoPath, logOpts) // <-- Call gitlogs function
+		logJSON, err := gl.GetLogsJSON(repoPath, logOpts) // Renamed logJson to logJSON
 		if err != nil {
 			log.Fatalf("Error getting git logs: %v", err)
 		}
-		fmt.Println(logJSON) // Print the JSON output
+		fmt.Println(logJSON) // Use logJSON
 
-	} else {
-		// --- Generate Contributor Report (Existing Logic) ---
-		contributorOpts := &gc.Options{
-			IncludeMergeCommits: *includeMerges,
-			StartDate:           startDate,
-			EndDate:             endDate,
+	case *generateReportFlag:
+		// --- ★★★ Generate AI Activity Report ★★★ ---
+		log.Println("Step 1: Fetching Git Logs for AI Report...")
+		logOpts := &gl.Options{StartDate: startDate, EndDate: endDate}
+		gitLogsJSON, err := gl.GetLogsJSON(repoPath, logOpts)
+		if err != nil {
+			log.Fatalf("Error getting git logs for AI report generation: %v", err)
 		}
-		// ... (rest of the contributor reporting logic from previous main.go) ...
+		log.Println("Step 1: Git Logs Fetched.")
+
+		log.Println("Step 2: Generating AI Activity Report...")
+		err = ar.GenerateReport(ctx, gitLogsJSON, *configPath) // Call the new function
+		if err != nil {
+			log.Fatalf("Error generating AI activity report: %v", err)
+		}
+		log.Println("Step 2: AI Activity Report Generation Finished.")
+
+	case isContributorReport: // Default case when no other flag is set
+		// --- Generate Contributor Report (Default Action) ---
+		contributorOpts := &gc.Options{IncludeMergeCommits: *includeMerges, StartDate: startDate, EndDate: endDate}
 		var filterDesc []string
 		if contributorOpts.IncludeMergeCommits {
 			filterDesc = append(filterDesc, "Including Merges")
@@ -106,7 +134,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error getting contributors: %v", err)
 		}
-		printContributors(contributors) // Assumes printContributors is still defined below
+		printContributors(contributors)
 	}
 }
 
