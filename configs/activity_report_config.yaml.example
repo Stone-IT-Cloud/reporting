@@ -1,0 +1,5 @@
+# Configuration for the activity report generation
+chunk_size: 100                  # Max number of commits per chunk sent to AI
+project_id: "your-gcp-project-id" # ★★★ Reemplaza con tu Project ID de Google Cloud ★★★
+location: "us-central1"          # Región de Vertex AI (ej: us-central1, europe-west1)
+gemini_model: "gemini-1.5-flash-001" # Modelo Gemini a utilizar
