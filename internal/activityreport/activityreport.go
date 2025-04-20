@@ -117,7 +117,9 @@ func GenerateReport(ctx context.Context, gitLogsJSON string, configPath string) 
 			fmt.Println("No commit logs provided or found in the input JSON. Skipping report generation.")
 			// Optionally write an empty report file or do nothing
 			outputPath := generateOutputFilename()
-			_ = os.WriteFile(outputPath, []byte("# Activity Report\n\nNo activity found in the provided logs.\n"), 0o600)
+			if err := os.WriteFile(outputPath, []byte("# Activity Report\n\nNo activity found in the provided logs.\n"), 0o600); err != nil {
+				return fmt.Errorf("failed to write empty report file %s: %w", outputPath, err)
+			}
 			fmt.Println("Generated empty report file:", outputPath)
 			return nil
 		}
