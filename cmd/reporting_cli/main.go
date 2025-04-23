@@ -29,6 +29,7 @@ func main() {
 	// --- ★★★ New flag for Activity Report ★★★ ---
 	generateReportFlag := flag.Bool("generate-report", false, "Generate AI activity report from git logs")
 	configPath := flag.String("config", "configs/activity_report_config.yaml", "Path to activity report config file")
+	reportPath := flag.String("report-path", "", "Path to save the generated AI activity report")
 
 	flag.Parse()
 
@@ -107,7 +108,8 @@ func main() {
 		log.Println("Step 1: Git Logs Fetched.")
 
 		log.Println("Step 2: Generating AI Activity Report...")
-		err = ar.GenerateReport(ctx, gitLogsJSON, *configPath) // Call the new function
+
+		err = ar.GenerateReport(ctx, gitLogsJSON, *configPath, *reportPath)
 		if err != nil {
 			log.Fatalf("Error generating AI activity report: %v", err)
 		}

@@ -12,7 +12,7 @@ import (
 
 // GenerateAIActivityReport orchestates the process of getting logs and generating the AI report.
 // This is the main function exposed by the 'reporting' package for this task.
-func GenerateAIActivityReport(ctx context.Context, repoPath, configPath string, startDate, endDate *time.Time) error {
+func GenerateAIActivityReport(ctx context.Context, repoPath, configPath string, startDate, endDate *time.Time, reportPath string) error {
 	fmt.Println("Orchestration: Starting AI Activity Report Generation")
 
 	// Step 1: Get Git Logs as JSON using the gitlogs sub-package
@@ -29,7 +29,7 @@ func GenerateAIActivityReport(ctx context.Context, repoPath, configPath string, 
 
 	// Step 2: Generate the report using the activityreport sub-package
 	fmt.Println("Orchestration: Generating AI report...")
-	err = activityreport.GenerateReport(ctx, gitLogsJSON, configPath)
+	err = activityreport.GenerateReport(ctx, gitLogsJSON, configPath, repoPath)
 	if err != nil {
 		return fmt.Errorf("orchestration failed during AI report generation: %w", err)
 	}
