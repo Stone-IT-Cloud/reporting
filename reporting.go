@@ -8,6 +8,7 @@ import (
 	// --- ★★★ Importa los sub-paquetes usando la ruta correcta desde la raíz del módulo ★★★ ---
 	"github.com/Stone-IT-Cloud/reporting/internal/activityreport" // Correct path
 	"github.com/Stone-IT-Cloud/reporting/pkg/gitlogs"             // Correct path
+	"github.com/Stone-IT-Cloud/reporting/pkg/gitproviders"        // Correct path
 )
 
 // GenerateAIActivityReport orchestates the process of getting logs and generating the AI report.
@@ -29,15 +30,19 @@ func GenerateAIActivityReport(ctx context.Context, repoPath, configPath string, 
 
 	// Step 2: Generate the report using the activityreport sub-package
 	fmt.Println("Orchestration: Generating AI report...")
-	err = activityreport.GenerateReport(ctx, gitLogsJSON, configPath, repoPath)
+	// For now, pass an empty slice of issues since this orchestration function doesn't fetch issues
+	var issues []gitproviders.Issue
+	report, err := activityreport.GenerateReport(ctx, gitLogsJSON, issues, configPath, reportPath)
 	if err != nil {
 		return fmt.Errorf("orchestration failed during AI report generation: %w", err)
+	}
+
+	// Output the generated report
+	if report != "" {
+		fmt.Println("Generated Report:")
+		fmt.Println(report)
 	}
 
 	fmt.Println("Orchestration: AI Activity Report Generation Finished Successfully.")
 	return nil
 }
-
-// Placeholder for other report types if needed in the future
-// func GenerateContributorReport(...) error { ... }
-// func GetRawLogsJSON(...) (string, error) { ... }

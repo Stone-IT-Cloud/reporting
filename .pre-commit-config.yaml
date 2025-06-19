@@ -45,10 +45,12 @@ repos:
       #
       # Go Vet
       #
-      -   id: go-vet
+      #-   id: go-vet  # disabled: runs on staged files only and misses repository types
       -   id: go-vet-mod
       # -   id: go-vet-pkg
       -   id: go-vet-repo-mod
+          always_run: true
+          pass_filenames: false
       # -   id: go-vet-repo-pkg
       #
       # Revive
@@ -100,8 +102,10 @@ repos:
       # - Supports repo config file for configuration
       # - https://github.com/golangci/golangci-lint
       #
-      -   id: golangci-lint
+      #-   id: golangci-lint  # disabled: use golangci-lint-repo-mod instead
       -   id: golangci-lint-mod
       # -   id: golangci-lint-pkg
       -   id: golangci-lint-repo-mod
+          entry: /Users/alejandro/go/bin/golangci-lint run --timeout 5m .
+          pass_filenames: false
       # -   id: golangci-lint-repo-pkg

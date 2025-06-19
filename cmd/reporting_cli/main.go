@@ -11,6 +11,7 @@ import (
 
 	gc "github.com/Stone-IT-Cloud/reporting/pkg/gitcontributors"
 	gl "github.com/Stone-IT-Cloud/reporting/pkg/gitlogs"
+	gp "github.com/Stone-IT-Cloud/reporting/pkg/gitproviders"
 
 	// --- ★★★ Import activityreport from internal ★★★ ---
 	ar "github.com/Stone-IT-Cloud/reporting/internal/activityreport"
@@ -30,6 +31,8 @@ func main() {
 	generateReportFlag := flag.Bool("generate-report", false, "Generate AI activity report from git logs")
 	configPath := flag.String("config", "configs/activity_report_config.yaml", "Path to activity report config file")
 	reportPath := flag.String("report-path", "", "Path to save the generated AI activity report")
+
+	issues := flag.Bool("issues", false, "Fetch repository issues (not implemented)")
 
 	flag.Parse()
 
@@ -97,6 +100,29 @@ func main() {
 		}
 		fmt.Println(logJSON) // Use logJSON
 
+	/* case *issues:
+	// --- Fetch Repository Issues (not implemented) ---
+	log.Println("Fetching repository issues is not implemented yet.")
+	var err error
+	projectIssues, err = getRepositoryIssues(ctx, repoPath)
+
+	if err != nil {
+		log.Fatalf("Error fetching repository issues: %v", err)
+	}
+	log.Println("Fetching repository issues is not implemented yet.")
+	fmt.Println("Repository Issues:")
+	for _, issue := range projectIssues {
+		fmt.Printf("Issue #%d: %s\n", issue.ID, issue.Title)
+		fmt.Printf("  Created at: %s\n", issue.CreatedAt.Format(dateLayout))
+		fmt.Printf("  State: %s\n", issue.State)
+		fmt.Printf("  URL: %s\n", issue.URL)
+		for _, commnent := range issue.Comments {
+			fmt.Printf("  Comment by: %s\n", commnent.Author)
+			fmt.Printf("  Comment at: %s\n", commnent.CreatedAt.Format(dateLayout))
+			fmt.Printf("  Comment: %s\n", commnent.Body)
+		}
+	} */
+
 	case *generateReportFlag:
 		// --- ★★★ Generate AI Activity Report ★★★ ---
 		log.Println("Step 1: Fetching Git Logs for AI Report...")
@@ -109,10 +135,20 @@ func main() {
 
 		log.Println("Step 2: Generating AI Activity Report...")
 
-		err = ar.GenerateReport(ctx, gitLogsJSON, *configPath, *reportPath)
+		repoIssues := []gp.Issue{}
+		if *issues {
+			repoIssues, err = getRepoIssues(ctx, repoPath)
+			if err != nil {
+				log.Fatalf("Error fetching repository issues: %v", err)
+			}
+		}
+		report, err := ar.GenerateReport(ctx, gitLogsJSON, repoIssues, *configPath, *reportPath)
 		if err != nil {
 			log.Fatalf("Error generating AI activity report: %v", err)
 		}
+		fmt.Println("--- Generated Report ---")
+		fmt.Println(report)
+		fmt.Println("--- End Report ---")
 		log.Println("Step 2: AI Activity Report Generation Finished.")
 
 	case isContributorReport: // Default case when no other flag is set
@@ -164,4 +200,21 @@ func printContributors(contributors []gc.Contributor) {
 	for _, c := range contributors {
 		fmt.Printf("  "+countFormat+" | %s | %s | %s <%s>\n", c.Commits, c.FirstCommitDate.Format(dateLayout), c.LastCommitDate.Format(dateLayout), c.Name, c.Email)
 	}
+}
+
+func getRepoIssues(ctx context.Context, repoPath string) ([]gp.Issue, error) {
+	repoMetadata, err := gp.ExtractRepoMetadata(ctx, repoPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract repository metadata: %w", err)
+	}
+	repo, err := gp.NewGitHubClient(ctx) // <-- Commented out or remove undefined function call
+	if err != nil {
+		return nil, fmt.Errorf("failed to create GitHub client: %w", err)
+	}
+	issues, err := repo.GetIssues(repoMetadata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get issues from GitHub: %w", err)
+	}
+
+	return issues, nil
 }
