@@ -6,7 +6,7 @@ go 1.24
 
 require (
 	github.com/google/generative-ai-go v0.19.0
-	github.com/google/go-github/v71 v71.0.1-0.20250423165150-04274a98708f
+	github.com/google/go-github/v72 v72.0.0
 	github.com/jarcoal/httpmock v1.4.0
 	google.golang.org/api v0.229.0
 	gopkg.in/yaml.v3 v3.0.1
