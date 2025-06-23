@@ -106,7 +106,7 @@ const credentialsFileEnvVar = "GOOGLE_APPLICATION_CREDENTIALS" // Environment va
 // Notes:
 //   - If no commit logs are provided or the AI model does not generate a response, an empty report is created.
 //   - The function ensures that non-technical stakeholders can understand the report by avoiding technical jargon.
-func GenerateReport(ctx context.Context, gitLogsJSON string, issues []gp.Issue, configPath string, outputPath string) (string, error) {
+func GenerateReport(ctx context.Context, gitLogsJSON string, issues []gp.Issue, orgProjects []*gp.OrganizationProjectV2, configPath string, outputPath string) (string, error) {
 	// --- 1. Load Configuration ---
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
@@ -326,11 +326,45 @@ Status Rationale: [Brief explanation, especially for Yellow/Red status]
 		}
 	}
 
+	var orgProjectsFinalResp *genai.GenerateContentResponse
+	if len(orgProjects) > 0 {
+		fmt.Printf("Sending list of [%d] organization projects to Gemini...\n", len(orgProjects))
+		_, err := cs.SendMessage(ctx, genai.Text("Now you will receive a json list of organization projects related to the project."))
+		if err != nil {
+			return "", fmt.Errorf("failed to send organization projects introduction message to Gemini: %w", err)
+		}
+		for i := 0; i < len(orgProjects); i += cfg.ChunkSize {
+			end := i + cfg.ChunkSize
+			if end > len(orgProjects) {
+				end = len(orgProjects)
+			}
+			chunk := orgProjects[i:end]
+			// Marshal chunk back to JSON
+			chunkJSONBytes, err := json.MarshalIndent(chunk, "", "  ")
+			if err != nil {
+				return "", fmt.Errorf("failed to marshal organization projects chunk %d/%d to JSON: %w", (i/cfg.ChunkSize)+1, totalChunks, err)
+			}
+			chunkJSONString := string(chunkJSONBytes)
+			fmt.Printf("Sending organization projects chunk %d/%d (%d projects) to Gemini...\n", (i/cfg.ChunkSize)+1, totalChunks, len(chunk))
+			// Send chunk JSON as the next prompt in the chat session
+			tempResp, err := cs.SendMessage(ctx, genai.Text(chunkJSONString))
+			if err != nil {
+				return "", fmt.Errorf("failed to send organization projects chunk %d/%d to Gemini: %w", (i/cfg.ChunkSize)+1, totalChunks, err)
+			}
+			orgProjectsFinalResp = tempResp // Store the last response
+		}
+		if orgProjectsFinalResp != nil {
+			fmt.Printf("\033[3;32m%s\033[0m\n", "Response from Gemini after sending latest organization projects chunk: "+extractTextFromResponse(orgProjectsFinalResp))
+		} else {
+			log.Println("No response received from Gemini after sending organization projects chunks.")
+		}
+		fmt.Println("")
+	}
 	// --- 7. Send Final Prompt ---
 	fmt.Println("Sending final prompt to Gemini...")
 	finalPrompt := `
-Now that you have received the commits and issues, please prepare a weekly activity report that will be sent to the client and other stakeholders.
-Use the issues list, if provided, for calculating project's lifecycle time of each issue and the velocity of the team.
+Now that you have received the commits, issues, and organization projects, please prepare a weekly activity report that will be sent to the client and other stakeholders.
+Use the issues list and project list, if provided, for calculating project's lifecycle time of each issue and the velocity of the team.
 Some of them are not technical persons, so keep a formal tone avoiding jargons. Please analyze the commits and issues and summarize the key points, challenges, and resolutions.
 Please write the report in markdown format.`
 	finalResp, err := cs.SendMessage(ctx, genai.Text(finalPrompt))

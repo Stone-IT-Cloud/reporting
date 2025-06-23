@@ -30,9 +30,10 @@ func GenerateAIActivityReport(ctx context.Context, repoPath, configPath string, 
 
 	// Step 2: Generate the report using the activityreport sub-package
 	fmt.Println("Orchestration: Generating AI report...")
-	// For now, pass an empty slice of issues since this orchestration function doesn't fetch issues
+	// For now, pass empty slices of issues and organization projects since this orchestration function doesn't fetch them
 	var issues []gitproviders.Issue
-	report, err := activityreport.GenerateReport(ctx, gitLogsJSON, issues, configPath, reportPath)
+	var orgProjects []*gitproviders.OrganizationProjectV2
+	report, err := activityreport.GenerateReport(ctx, gitLogsJSON, issues, orgProjects, configPath, reportPath)
 	if err != nil {
 		return fmt.Errorf("orchestration failed during AI report generation: %w", err)
 	}

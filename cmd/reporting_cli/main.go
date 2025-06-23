@@ -32,16 +32,16 @@ func main() {
 	configPath := flag.String("config", "configs/activity_report_config.yaml", "Path to activity report config file")
 	reportPath := flag.String("report-path", "", "Path to save the generated AI activity report")
 
-	issues := flag.Bool("issues", false, "Fetch repository issues (not implemented)")
+	issues := flag.Bool("issues", false, "Fetch repository issues")
 	projects := flag.Bool("projects", false, "List organization projects")
 	orgName := flag.String("org", "", "Organization name (required when using -projects flag)")
 
 	flag.Parse()
 
 	// --- Validate Arguments ---
-	// For projects flag, we don't need a repository path
-	if *projects && *orgName == "" {
-		log.Fatal("Error: -org flag is required when using -projects flag. Please specify the organization name.")
+	// Validate -org flag usage
+	if (*projects || *generateReportFlag) && *orgName == "" {
+		log.Fatal("Error: -org flag is required when using -projects or -generate-report with -projects flag.")
 	}
 
 	// For all other operations, require repository path
@@ -58,21 +58,29 @@ func main() {
 		repoPath = flag.Arg(0)
 	}
 
-	// Determine mutually exclusive actions
-	actionCount := 0
+	// Determine primary action - only -log and -generate-report are mutually exclusive
+	// -projects and -issues can be used with -generate-report but not standalone without -org
+	primaryActionCount := 0
 	if *getLogsFlag {
-		actionCount++
+		primaryActionCount++
 	}
 	if *generateReportFlag {
-		actionCount++
+		primaryActionCount++
 	}
-	if *projects {
-		actionCount++
+
+	// If none of the primary flags are set and not using -projects standalone, default to contributors
+	isContributorReport := primaryActionCount == 0 && !*projects
+
+	// Only -log and -generate-report are mutually exclusive
+	if *getLogsFlag && *generateReportFlag {
+		log.Fatal("Error: -log and -generate-report flags are mutually exclusive.")
 	}
-	// If none of the specific flags are set, default to contributors
-	isContributorReport := actionCount == 0
-	if actionCount > 1 {
-		log.Fatal("Error: -log, -generate-report, and -projects flags are mutually exclusive.")
+
+	// -projects without -generate-report requires -org
+	if *projects && !*generateReportFlag && primaryActionCount == 0 {
+		if *orgName == "" {
+			log.Fatal("Error: -org flag is required when using -projects flag standalone.")
+		}
 	}
 
 	// --- Parse Dates ---
@@ -115,29 +123,6 @@ func main() {
 		}
 		fmt.Println(logJSON) // Use logJSON
 
-	/* case *issues:
-	// --- Fetch Repository Issues (not implemented) ---
-	log.Println("Fetching repository issues is not implemented yet.")
-	var err error
-	projectIssues, err = getRepositoryIssues(ctx, repoPath)
-
-	if err != nil {
-		log.Fatalf("Error fetching repository issues: %v", err)
-	}
-	log.Println("Fetching repository issues is not implemented yet.")
-	fmt.Println("Repository Issues:")
-	for _, issue := range projectIssues {
-		fmt.Printf("Issue #%d: %s\n", issue.ID, issue.Title)
-		fmt.Printf("  Created at: %s\n", issue.CreatedAt.Format(dateLayout))
-		fmt.Printf("  State: %s\n", issue.State)
-		fmt.Printf("  URL: %s\n", issue.URL)
-		for _, commnent := range issue.Comments {
-			fmt.Printf("  Comment by: %s\n", commnent.Author)
-			fmt.Printf("  Comment at: %s\n", commnent.CreatedAt.Format(dateLayout))
-			fmt.Printf("  Comment: %s\n", commnent.Body)
-		}
-	} */
-
 	case *generateReportFlag:
 		// --- ★★★ Generate AI Activity Report ★★★ ---
 		log.Println("Step 1: Fetching Git Logs for AI Report...")
@@ -157,7 +142,18 @@ func main() {
 				log.Fatalf("Error fetching repository issues: %v", err)
 			}
 		}
-		report, err := ar.GenerateReport(ctx, gitLogsJSON, repoIssues, *configPath, *reportPath)
+
+		orgProjects := []*gp.OrganizationProjectV2{}
+		if *projects {
+			log.Println("Fetching organization projects for AI report...")
+			// Fetch organization projects
+			orgProjects, err = getOrganizationProjects(ctx, *orgName)
+			if err != nil {
+				log.Fatalf("Error fetching organization projects: %v", err)
+			}
+		}
+
+		report, err := ar.GenerateReport(ctx, gitLogsJSON, repoIssues, orgProjects, *configPath, *reportPath)
 		if err != nil {
 			log.Fatalf("Error generating AI activity report: %v", err)
 		}
@@ -167,23 +163,19 @@ func main() {
 		log.Println("Step 2: AI Activity Report Generation Finished.")
 
 	case *projects:
-		// --- List Organization Projects ---
-		log.Printf("Fetching projects for organization: %s", *orgName)
+		if !*generateReportFlag {
+			// --- List Organization Projects ---
+			log.Printf("Fetching projects for organization: %s", *orgName)
 
-		// Create GitHub client
-		githubClient, err := gp.NewGitHubClient(ctx)
-		if err != nil {
-			log.Fatalf("Error creating GitHub client: %v", err)
+			projects, err := getOrganizationProjects(ctx, *orgName)
+			if err != nil {
+				log.Fatalf("Error fetching organization projects: %v", err)
+			}
+
+			// Print projects
+
+			printOrganizationProjects(projects, *orgName)
 		}
-
-		// List organization projects
-		projects, err := githubClient.ListOrganizationProjectsWithDetails(*orgName, nil, true)
-		if err != nil {
-			log.Fatalf("Error fetching organization projects: %v", err)
-		}
-
-		// Print projects
-		printOrganizationProjects(projects, *orgName)
 
 	case isContributorReport: // Default case when no other flag is set
 		// --- Generate Contributor Report (Default Action) ---
@@ -208,6 +200,21 @@ func main() {
 		}
 		printContributors(contributors)
 	}
+}
+
+func getOrganizationProjects(ctx context.Context, orgName string) ([]*gp.OrganizationProjectV2, error) {
+	// Create GitHub client
+	githubClient, err := gp.NewGitHubClient(ctx)
+	if err != nil {
+		log.Fatalf("Error creating GitHub client: %v", err)
+	}
+
+	// List organization projects
+	projects, err := githubClient.ListOrganizationProjectsWithDetails(orgName, nil, true)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching organization projects: %w", err)
+	}
+	return projects, nil
 }
 
 // printContributors helper function (using gc.Contributor type)
