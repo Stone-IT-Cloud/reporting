@@ -22,7 +22,9 @@ The tool is built using Go and utilizes standard library features along with ext
 *   [Usage](#usage)
     *   [Contributor Report](#contributor-report)
     *   [Git Log JSON Report](#git-log-json-report)
+    *   [GitHub Organization Projects](#github-organization-projects)
     *   [AI Activity Report](#ai-activity-report)
+    *   [GitHub Organization Projects](#github-organization-projects)
 *   [Configuration (AI Activity Report)](#configuration-ai-activity-report)
     *   [Configuration File](#configuration-file)
     *   [Authentication](#authentication)
@@ -36,6 +38,7 @@ The tool is built using Go and utilizes standard library features along with ext
 *   Extract detailed Git commit logs as JSON.
 *   Filter log reports by date range.
 *   Generate AI-powered weekly activity summaries using Google Gemini.
+*   **List GitHub organization projects using the modern GraphQL API (Projects beta).**
 *   Configure AI report generation parameters (chunk size, GCP project, location, model).
 *   Support multiple authentication methods for Google Cloud AI Platform (Credentials File, API Key).
 *   Command-line interface for easy integration into scripts.
@@ -143,6 +146,47 @@ Generates a weekly activity report using Google Gemini based on commit logs.
 # Generate report for ../my-project for last week, using custom config, save to file
 ./reporting_cli -generate-report -start 2025-04-16 -end 2025-04-22 -config my_config.yaml -report-path weekly_report.md ../my-project
 ```
+
+### GitHub Organization Projects
+
+Lists all projects (beta) for a GitHub organization using the modern GraphQL API.
+
+**Prerequisites:**
+- Set the `GITHUB_TOKEN` environment variable with a GitHub personal access token
+- The token must have access to read the organization's projects
+
+**Command:**
+
+```bash
+./reporting_cli -projects -org <organization-name> <path-to-git-repo>
+```
+
+**Flags:**
+
+*   `-projects`: Enable organization projects listing mode.
+*   `-org <name>`: Organization name (required when using `-projects`).
+
+**Example:**
+
+```bash
+# List all projects for Microsoft organization
+export GITHUB_TOKEN="your_github_token_here"
+./reporting_cli -projects -org microsoft .
+
+# List projects for your organization
+./reporting_cli -projects -org your-org-name .
+```
+
+**Output:**
+The command displays detailed information about each project including:
+- Project title and ID
+- Project number and status (Open/Closed)
+- Visibility (Public/Private)
+- Description (if available)
+- URLs, creation/update dates
+- Creator information
+
+**Note:** This functionality uses GitHub's modern "Projects (beta)" via the GraphQL API. The older "Projects (classic)" REST API has been deprecated by GitHub.
 
 ## Configuration (AI Activity Report)
 

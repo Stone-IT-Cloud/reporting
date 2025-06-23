@@ -8,6 +8,8 @@ require (
 	github.com/google/generative-ai-go v0.19.0
 	github.com/google/go-github/v72 v72.0.0
 	github.com/jarcoal/httpmock v1.4.0
+	github.com/shurcooL/graphql v0.0.0-20230722043721-ed46e5a46466
+	golang.org/x/oauth2 v0.30.0
 	google.golang.org/api v0.229.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -35,7 +37,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/net v0.39.0 // indirect
-	golang.org/x/oauth2 v0.29.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
